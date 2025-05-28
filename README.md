@@ -11,10 +11,11 @@ Este proyecto representa la interfaz de usuario de una plataforma digital diseñ
 - Navegación protegida mediante rutas privadas.
 
 ## 🚀 Tecnologías Utilizadas
-- React
-- Vite
-- React Router
-- Axios
+- React.
+- Vite.
+- React Router.
+- Axios.
+- Bootstrap.
 
 ## ⚙️ Instalación y Configuración
 ### 1️⃣ Clonar el Repositorio
