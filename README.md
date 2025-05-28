@@ -11,17 +11,23 @@ Este proyecto representa la interfaz de usuario de una plataforma digital diseñ
 - Navegación protegida mediante rutas privadas.
 
 ## 🚀 Tecnologías Utilizadas
-- React.
-- Vite.
-- React Router.
-- Axios.
-- Bootstrap.
+- React
+- Vite
+- React Router
+- Axios
+- Bootstrap
+
+## 🔧 Requisitos Previos
+
+- Node.js 16 o superior
+- npm 
+- Navegador web moderno (Chrome, Firefox, Edge)
 
 ## ⚙️ Instalación y Configuración
 ### 1️⃣ Clonar el Repositorio
 ```bash
 git clone https://github.com/silviac43/Mensajeria-Entornos-Frontend.git
-cd Mensajeria-Entornos-Frontkend
+cd Mensajeria-Entornos-Frontend
 ```
 ### 2️⃣ Configurar el Frontend
 1. Instalar dependencias:
