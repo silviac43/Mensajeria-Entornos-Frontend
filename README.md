@@ -1,4 +1,4 @@
-# 🎨 Mensajeria-Entornos-Backend
+# 🎨 Mensajeria-Entornos-Frontend
 
 ## 📌 Descripción
 Este proyecto representa la interfaz de usuario de una plataforma digital diseñada para optimizar la gestión de pedidos y entregas en empresas de mensajería express. Desde esta aplicación web, los usuarios pueden interactuar con las funcionalidades del sistema de forma intuitiva y eficiente.
