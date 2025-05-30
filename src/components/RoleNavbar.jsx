@@ -1,5 +1,5 @@
-// src/components/RoleNavbar.jsx
 import { Link } from 'react-router-dom';
+import logo from '../images/logo.png';
 
 const RoleNavbar = ({ userRole, onLogout }) => {
   const roleNavItems = {
@@ -7,20 +7,20 @@ const RoleNavbar = ({ userRole, onLogout }) => {
       { label: "Clientes", path: "/admin/clientes" },
       { label: "Empresas", path: "/admin/empresas" },
       { label: "Pedidos", path: "/admin/pedidos" },
-      { label: "Historial de Pedidos", path: "/admin/historial_pedido" },
+      { label: "Historial de pedidos", path: "/admin/historial_pedido" },
       { label: "Usuarios", path: "/admin/usuarios" },
       { label: "Mi información", path: "/admin/info" }
     ],
     ROLE_operador: [
       { label: "Clientes", path: "/operador/clientes" },
       { label: "Pedidos", path: "/operador/pedidos" },
-      { label: "Historial de Pedidos", path: "/operador/historial_pedido" },
+      { label: "Historial de pedidos", path: "/operador/historial_pedido" },
       { label: "Mensajeros", path: "/operador/mensajeros" },
       { label: "Mi información", path: "/operador/info" }
     ],
     ROLE_mensajero: [
-      { label: "Pedidos", path: "/mensajero/pedidos" },
-      { label: "Historial de Pedidos", path: "/mensajero/historial_pedido" },
+      { label: "Mis pedidos", path: "/mensajero/pedidos" },
+      { label: "Historial de mis pedidos", path: "/mensajero/historial_pedido" },
       { label: "Mi información", path: "/mensajero/info" }
     ]
   };
@@ -37,29 +37,45 @@ const RoleNavbar = ({ userRole, onLogout }) => {
   return (
     <nav
       style={{
-        backgroundColor: "var(--color-primary)",
+        backgroundColor: "#e1ddd3",
         padding: "0.75rem 2rem",
         display: "flex",
         justifyContent: "space-between",
         alignItems: "center",
-        color: "white",
         boxShadow: "0 2px 8px rgba(20, 38, 99, 0.4)",
       }}
     >
-      <Link
-        to={getDashboardPath()}
+      <div
         style={{
-          fontWeight: "700",
-          fontSize: "1.8rem",
-          letterSpacing: "2px",
-          color: "white",
-          textDecoration: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "2rem",
+          flexGrow: 1,
+          borderRight: "1px solid #ccc",
+          paddingRight: "1rem",
         }}
       >
-        Agatha
-      </Link>
+        <Link
+          to={getDashboardPath()}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            textDecoration: "none",
+            color: "#374151",
+            gap: "0.5rem",
+          }}
+        >
+          <img
+            src={logo}
+            alt="Logo"
+            style={{
+              height: "80px",
+              width: "80px",
+              objectFit: "cover",
+            }}
+          />
+        </Link>
 
-      <div style={{ display: "flex", alignItems: "center", gap: "2rem" }}>
         <ul
           style={{
             display: "flex",
@@ -74,44 +90,46 @@ const RoleNavbar = ({ userRole, onLogout }) => {
               <Link
                 to={item.path}
                 style={{
-                  color: "var(--color-bg-overlay)",
+                  color: "#374151",
                   textDecoration: "none",
-                  fontWeight: "600",
+                  fontWeight: "500",
                   transition: "color 0.3s ease",
                 }}
-                onMouseEnter={(e) => (e.target.style.color = "var(--color-accent)")}
-                onMouseLeave={(e) => (e.target.style.color = "var(--color-bg-overlay)")}
+                onMouseEnter={(e) => (e.target.style.color = "#4a90e2")}
+                onMouseLeave={(e) => (e.target.style.color = "#374151")}
               >
                 {item.label}
               </Link>
             </li>
           ))}
         </ul>
-
-        <button
-          onClick={onLogout}
-          style={{
-            backgroundColor: "transparent",
-            border: "2px solid var(--color-bg-overlay)",
-            color: "var(--color-bg-overlay)",
-            padding: "0.5rem 1rem",
-            borderRadius: "6px",
-            fontWeight: "600",
-            cursor: "pointer",
-            transition: "all 0.3s ease",
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = "var(--color-bg-overlay)";
-            e.target.style.color = "var(--color-primary)";
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = "transparent";
-            e.target.style.color = "var(--color-bg-overlay)";
-          }}
-        >
-          Cerrar Sesión
-        </button>
       </div>
+
+      <button
+        onClick={onLogout}
+        style={{
+          backgroundColor: "#111827",
+          color: "#e1ddd3",
+          padding: "0.5rem 1.2rem",
+          borderRadius: "20px",
+          border: "none",
+          fontWeight: "600",
+          cursor: "pointer",
+          boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+          transition: "all 0.3s ease",
+          whiteSpace: "nowrap",
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = "#4a90e2";
+          e.target.style.color = "white";
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = "#111827";
+          e.target.style.color = "#e1ddd3";
+        }}
+      >
+        Cerrar Sesión
+      </button>
     </nav>
   );
 };

@@ -1,13 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
+import Footer from '../../components/Footer'; 
 
 export default function AdminClientes() {
   const [clientes, setClientes] = useState([]);
+  const [clientesFiltrados, setClientesFiltrados] = useState([]);
   const [empresas, setEmpresas] = useState([]);
   const [formVisible, setFormVisible] = useState(false);
   const [editingCliente, setEditingCliente] = useState(null);
   const [errores, setErrores] = useState({});
   const [loading, setLoading] = useState(true);
+  const [filtroEmpresa, setFiltroEmpresa] = useState('');
+  const formRef = useRef(null);
 
   const token = localStorage.getItem('token');
   const headers = {
@@ -18,6 +22,21 @@ export default function AdminClientes() {
   useEffect(() => {
     cargarDatos();
   }, []);
+
+  useEffect(() => {
+    aplicarFiltro();
+  }, [clientes, filtroEmpresa]);
+
+  const aplicarFiltro = () => {
+    if (!filtroEmpresa) {
+      setClientesFiltrados(clientes);
+    } else {
+      const filtrados = clientes.filter(cliente => 
+        cliente.empresaMensajeria?.id === parseInt(filtroEmpresa)
+      );
+      setClientesFiltrados(filtrados);
+    }
+  };
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -45,22 +64,9 @@ export default function AdminClientes() {
     }
   };
 
-  const cargarClientes = () => {
-    axios.get('http://localhost:8080/api/clientes', { headers })
-      .then(res => {
-        const data = res.data;
-        if (data.status === 'success') {
-          setClientes(data.data);
-        } else {
-          console.error('Error al cargar clientes:', data.message);
-        }
-      })
-      .catch(err => console.error('Error al cargar clientes:', err));
-  };
-
   const validarCampo = (name, value) => {
     let error = '';
-    if (!value.trim()) {
+    if (!value || !value.toString().trim()) {
       error = 'Este campo es obligatorio';
     } else if (name === 'email') {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -73,8 +79,12 @@ export default function AdminClientes() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
+    
     if (name === 'empresaMensajeria') {
-      setEditingCliente(prev => ({ ...prev, empresaMensajeria: { id: Number(value) } }));
+      setEditingCliente(prev => ({
+        ...prev,
+        empresaMensajeria: { id: Number(value) }
+      }));
       setErrores(prev => ({
         ...prev,
         empresaMensajeria: value ? '' : 'Debe seleccionar una empresa'
@@ -90,33 +100,38 @@ export default function AdminClientes() {
     const erroresValidacion = {};
     const campos = [
       'nombre', 'telefonoRecogida', 'direccionRecogida',
-      'telefonoEntrega', 'direccionEntrega', 'email'
+      'telefonoEntrega', 'direccionEntrega', 'email', 'empresaMensajeria'
     ];
+    
     campos.forEach(campo => {
-      const valor = editingCliente?.[campo] || '';
-      const errorCampo = validarCampo(campo, valor);
-      if (errorCampo) erroresValidacion[campo] = errorCampo;
+      let valor;
+      if (campo === 'empresaMensajeria') {
+        valor = editingCliente?.empresaMensajeria?.id;
+      } else {
+        valor = editingCliente?.[campo];
+      }
+      const error = validarCampo(campo, valor);
+      if (error) erroresValidacion[campo] = error;
     });
-    if (!editingCliente?.empresaMensajeria?.id) {
-      erroresValidacion.empresaMensajeria = 'Debe seleccionar una empresa';
-    }
+    
     setErrores(erroresValidacion);
     return Object.keys(erroresValidacion).length === 0;
   };
 
   const handleEditar = (cliente) => {
-    console.log('Editando cliente:', cliente);
     setEditingCliente(cliente);
     setFormVisible(true);
     setErrores({});
+    setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
   };
 
   const handleEliminar = (id) => {
     if (confirm('¿Eliminar cliente?')) {
       axios.delete(`http://localhost:8080/api/clientes/${id}`, { headers })
         .then(() => {
-          console.log('Cliente eliminado correctamente');
-          cargarClientes();
+          cargarDatos();
         })
         .catch(err => console.error('Error al eliminar cliente:', err));
     }
@@ -126,29 +141,38 @@ export default function AdminClientes() {
     e.preventDefault();
     if (!validarFormulario()) return;
 
-    const cliente = editingCliente;
-    console.log('Guardando cliente, datos a enviar:', cliente);
-
     try {
-      const response = cliente.id
-        ? await axios.put(`http://localhost:8080/api/clientes/${cliente.id}`, cliente, { headers })
-        : await axios.post('http://localhost:8080/api/clientes', cliente, { headers });
+      let clienteEnviar = { ...editingCliente };
 
-      const data = response.data;
-      if (data.status === 'success') {
-        console.log('Cliente guardado con éxito:', data.data);
+      if (clienteEnviar.empresaMensajeria && typeof clienteEnviar.empresaMensajeria === 'object') {
+        clienteEnviar.empresaMensajeria = { id: clienteEnviar.empresaMensajeria.id };
+      }
+
+      const url = clienteEnviar.id
+        ? `http://localhost:8080/api/clientes/${clienteEnviar.id}`
+        : 'http://localhost:8080/api/clientes';
+
+      const method = clienteEnviar.id ? axios.put : axios.post;
+      const response = await method(url, clienteEnviar, { headers });
+
+      if (response.data.status === 'success') {
         setFormVisible(false);
         setEditingCliente(null);
         setErrores({});
-        cargarClientes();
+        
+        if (clienteEnviar.id) {
+          alert('Cliente actualizado correctamente.');
+        } else {
+          alert('Cliente creado correctamente.');
+        }
+        
+        cargarDatos();
       } else {
-        console.error('Error al guardar cliente (respuesta API):', data.message);
-        alert(`Error al guardar cliente: ${data.message}`);
+        alert(`Error al guardar cliente: ${response.data.message}`);
       }
-    } catch (err) {
-      console.error('Error al guardar cliente (catch):', err);
-      console.error('Detalles del error (respuesta completa):', err.response?.data || err.message);
-      alert(`Error al guardar cliente: ${err.response?.data?.message || err.message}`);
+    } catch (error) {
+      console.error('Error al guardar cliente:', error);
+      alert(`Error al guardar cliente: ${error.response?.data?.message || error.message}`);
     }
   };
 
@@ -160,90 +184,340 @@ export default function AdminClientes() {
 
   if (loading) {
     return (
-      <div className="p-4">
-        <h2 className="text-2xl font-bold mb-4">Administrar Clientes</h2>
-        <div className="flex justify-center items-center h-32">
-          <div className="text-lg">Cargando datos...</div>
+      <>
+        <div className="container py-4" style={{ minHeight: 'calc(100vh - 120px)' }}>
+          <h3 className="fw-bold" style={{ fontSize: '30px' }}>
+            <i className="bi bi-hammer me-2" style={{ color: '#20b2aa' }}></i>
+            Administrar Clientes
+          </h3>
+          <div className="text-center mt-5">
+            <div className="spinner-border text-primary" role="status" />
+            <p className="mt-3">Cargando clientes...</p>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </>
     );
   }
 
   return (
-    <div className="p-4">
-      <h2 className="text-2xl font-bold mb-4">Administrar Clientes</h2>
-
-      {formVisible ? (
-        <form onSubmit={handleGuardar} className="space-y-4 bg-white p-6 rounded-xl shadow-md mb-6 max-w-xl mx-auto">
-          {[{ name: 'nombre', placeholder: 'Nombre' }, { name: 'telefonoRecogida', placeholder: 'Teléfono Recogida' },
-            { name: 'direccionRecogida', placeholder: 'Dirección Recogida' }, { name: 'telefonoEntrega', placeholder: 'Teléfono Entrega' },
-            { name: 'direccionEntrega', placeholder: 'Dirección Entrega' }, { name: 'email', placeholder: 'Email', type: 'email' }]
-            .map(({ name, placeholder, type = 'text' }) => (
-              <div key={name}>
-                <input
-                  name={name}
-                  type={type}
-                  value={editingCliente?.[name] || ''}
-                  onChange={handleInputChange}
-                  placeholder={placeholder}
-                  className={`w-full px-4 py-2 border rounded-md ${errores[name] ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-400`}
-                />
-                {errores[name] && <p className="text-red-600 text-sm mt-1">{errores[name]}</p>}
-              </div>
-            ))}
-
-          <div>
-            <select
-              name="empresaMensajeria"
-              value={editingCliente?.empresaMensajeria?.id || ''}
-              onChange={handleInputChange}
-              className={`w-full px-4 py-2 border rounded-md ${errores.empresaMensajeria ? 'border-red-500' : 'border-gray-300'} focus:outline-none focus:ring-2 focus:ring-blue-400`}
-            >
-              <option value="">Selecciona empresa</option>
-              {empresas.map(e => (
-                <option key={e.id} value={e.id}>{e.nombre}</option>
-              ))}
-            </select>
-            {errores.empresaMensajeria && <p className="text-red-600 text-sm mt-1">{errores.empresaMensajeria}</p>}
-          </div>
-
-          <div className="flex gap-4 mt-4 justify-end">
-            <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">Guardar</button>
-            <button type="button" className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition" onClick={() => { setFormVisible(false); setEditingCliente(null); setErrores({}); }}>Cancelar</button>
-          </div>
-        </form>
-      ) : (
-        <div className="mb-6">
-          <button onClick={() => { setFormVisible(true); setEditingCliente({ empresaMensajeria: { id: '' } }); setErrores({}); }} className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 transition">
-            + Nuevo Cliente
+    <>
+      <div className="container py-4" style={{ minHeight: 'calc(100vh - 120px)' }}>
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <h3 className="fw-bold" style={{ fontSize: '30px' }}>
+            <i className="bi bi-handshake me-2" style={{ color: '#20b2aa' }}></i>
+            Administrar clientes
+          </h3>
+          <button
+            onClick={() => {
+              setFormVisible(true);
+              setEditingCliente({
+                nombre: '',
+                telefonoRecogida: '',
+                direccionRecogida: '',
+                telefonoEntrega: '',
+                direccionEntrega: '',
+                email: '',
+                empresaMensajeria: { id: '' }
+              });
+              setErrores({});
+            }}
+            className="btn btn-success"
+          >
+            <i className="bi bi-plus-lg me-2"></i>
+            Nuevo cliente
           </button>
         </div>
-      )}
 
-      <table className="w-full table-auto border text-left shadow-sm rounded overflow-hidden bg-white">
-        <thead className="bg-gray-100">
-          <tr>
-            <th className="px-4 py-2">Nombre</th>
-            <th className="px-4 py-2">Email</th>
-            <th className="px-4 py-2">Empresa</th>
-            <th className="px-4 py-2">Acciones</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clientes.map(cliente => (
-            <tr key={cliente.id} className="border-t hover:bg-gray-50 transition">
-              <td className="px-4 py-2">{cliente.nombre}</td>
-              <td className="px-4 py-2">{cliente.email}</td>
-              <td className="px-4 py-2">{getEmpresaName(cliente.empresaMensajeria?.id)}</td>
-              <td className="px-4 py-2">
-                <button onClick={() => handleEditar(cliente)} className="text-blue-600 hover:underline mr-4">Editar</button>
-                <button onClick={() => handleEliminar(cliente.id)} className="text-red-600 hover:underline">Eliminar</button>
-              </td>
-            </tr>
+        <div className="row mb-4">
+          <div className="col-md-4">
+            <div className="card shadow-sm">
+              <div className="card-body">
+                <label className="form-label fw-semibold">
+                  <i className="bi bi-funnel me-2" style={{ color: '#6c757d' }}></i>
+                  Filtrar por empresa
+                </label>
+                <select
+                  value={filtroEmpresa}
+                  onChange={(e) => setFiltroEmpresa(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="">Todas las empresas</option>
+                  {empresas.map(empresa => (
+                    <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-8 d-flex align-items-end">
+            <div className="text-muted">
+              Mostrando {clientesFiltrados.length} de {clientes.length} clientes
+            </div>
+          </div>
+        </div>
+
+        {formVisible && (
+          <div ref={formRef} className="card shadow-sm mb-4 mx-auto" style={{ maxWidth: '700px' }}>
+            <div className="card-header bg-primary text-white">
+              <i className="bi bi-handshake me-2"></i>
+              {editingCliente?.id ? 'Editar cliente' : 'Nuevo cliente'}
+            </div>
+            <div className="card-body">
+              <form onSubmit={handleGuardar}>
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">
+                      <i className="bi bi-person-fill me-1" style={{ color: '#20b2aa' }}></i>
+                      Nombre
+                    </label>
+                    <input
+                      type="text"
+                      name="nombre"
+                      value={editingCliente?.nombre || ''}
+                      onChange={handleInputChange}
+                      className={`form-control ${errores.nombre ? 'is-invalid' : ''}`}
+                      placeholder="Nombre del cliente"
+                    />
+                    {errores.nombre && (
+                      <div className="invalid-feedback">{errores.nombre}</div>
+                    )}
+                  </div>
+
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">
+                      <i className="bi bi-envelope-fill me-1" style={{ color: '#007bff' }}></i>
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="email"
+                      value={editingCliente?.email || ''}
+                      onChange={handleInputChange}
+                      className={`form-control ${errores.email ? 'is-invalid' : ''}`}
+                      placeholder="correo@ejemplo.com"
+                    />
+                    {errores.email && (
+                      <div className="invalid-feedback">{errores.email}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">
+                      <i className="bi bi-telephone-fill me-1" style={{ color: '#28a745' }}></i>
+                      Teléfono Recogida
+                    </label>
+                    <input
+                      type="text"
+                      name="telefonoRecogida"
+                      value={editingCliente?.telefonoRecogida || ''}
+                      onChange={handleInputChange}
+                      className={`form-control ${errores.telefonoRecogida ? 'is-invalid' : ''}`}
+                      placeholder="Teléfono de recogida"
+                    />
+                    {errores.telefonoRecogida && (
+                      <div className="invalid-feedback">{errores.telefonoRecogida}</div>
+                    )}
+                  </div>
+
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">
+                      <i className="bi bi-telephone-fill me-1" style={{ color: '#ffc107' }}></i>
+                      Teléfono Entrega
+                    </label>
+                    <input
+                      type="text"
+                      name="telefonoEntrega"
+                      value={editingCliente?.telefonoEntrega || ''}
+                      onChange={handleInputChange}
+                      className={`form-control ${errores.telefonoEntrega ? 'is-invalid' : ''}`}
+                      placeholder="Teléfono de entrega"
+                    />
+                    {errores.telefonoEntrega && (
+                      <div className="invalid-feedback">{errores.telefonoEntrega}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">
+                      <i className="bi bi-geo-alt-fill me-1" style={{ color: '#dc3545' }}></i>
+                      Dirección Recogida
+                    </label>
+                    <input
+                      type="text"
+                      name="direccionRecogida"
+                      value={editingCliente?.direccionRecogida || ''}
+                      onChange={handleInputChange}
+                      className={`form-control ${errores.direccionRecogida ? 'is-invalid' : ''}`}
+                      placeholder="Dirección de recogida"
+                    />
+                    {errores.direccionRecogida && (
+                      <div className="invalid-feedback">{errores.direccionRecogida}</div>
+                    )}
+                  </div>
+
+                  <div className="col-md-6 mb-3">
+                    <label className="form-label">
+                      <i className="bi bi-geo-alt-fill me-1" style={{ color: '#6f42c1' }}></i>
+                      Dirección Entrega
+                    </label>
+                    <input
+                      type="text"
+                      name="direccionEntrega"
+                      value={editingCliente?.direccionEntrega || ''}
+                      onChange={handleInputChange}
+                      className={`form-control ${errores.direccionEntrega ? 'is-invalid' : ''}`}
+                      placeholder="Dirección de entrega"
+                    />
+                    {errores.direccionEntrega && (
+                      <div className="invalid-feedback">{errores.direccionEntrega}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="row">
+                  <div className="col-md-12 mb-3">
+                    <label className="form-label">
+                      <i className="bi bi-building me-1" style={{ color: '#ff6600' }}></i>
+                      Empresa
+                    </label>
+                    <select
+                      name="empresaMensajeria"
+                      value={editingCliente?.empresaMensajeria?.id || ''}
+                      onChange={handleInputChange}
+                      className={`form-select ${errores.empresaMensajeria ? 'is-invalid' : ''}`}
+                    >
+                      <option value="">Seleccionar empresa</option>
+                      {empresas.map(empresa => (
+                        <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                      ))}
+                    </select>
+                    {errores.empresaMensajeria && (
+                      <div className="invalid-feedback">{errores.empresaMensajeria}</div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="d-flex justify-content-end gap-2">
+                  <button type="submit" className="btn btn-primary">
+                    <i className="bi bi-save me-1"></i> Guardar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setFormVisible(false);
+                      setEditingCliente(null);
+                      setErrores({});
+                    }}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+          {clientesFiltrados.map(cliente => (
+            <div className="col" key={cliente.id}>
+              <div className="card h-100 shadow-sm">
+                <div className="card-body">
+                  <div className="text-center mb-3">
+                    <i className="bi bi-handshake-fill" style={{ fontSize: '3rem', color: '#20b2aa' }}></i>
+                  </div>
+                  
+                  <h5 className="card-title text-center mb-3">{cliente.nombre}</h5>
+                  
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      <i className="bi bi-envelope me-1" style={{ color: '#007bff' }}></i>
+                      Email:
+                    </small>
+                    <div className="text-truncate">{cliente.email}</div>
+                  </div>
+
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      <i className="bi bi-building me-1" style={{ color: '#ff6600' }}></i>
+                      Empresa:
+                    </small>
+                    <div className="fw-semibold text-primary">{getEmpresaName(cliente.empresaMensajeria?.id)}</div>
+                  </div>
+
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      <i className="bi bi-telephone me-1" style={{ color: '#28a745' }}></i>
+                      Tel. Recogida:
+                    </small>
+                    <div>{cliente.telefonoRecogida}</div>
+                  </div>
+
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      <i className="bi bi-telephone me-1" style={{ color: '#ffc107' }}></i>
+                      Tel. Entrega:
+                    </small>
+                    <div>{cliente.telefonoEntrega}</div>
+                  </div>
+
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      <i className="bi bi-geo-alt me-1" style={{ color: '#dc3545' }}></i>
+                      Dir. Recogida:
+                    </small>
+                    <div className="text-truncate" title={cliente.direccionRecogida}>
+                      {cliente.direccionRecogida}
+                    </div>
+                  </div>
+
+                  <div className="mb-2">
+                    <small className="text-muted">
+                      <i className="bi bi-geo-alt me-1" style={{ color: '#6f42c1' }}></i>
+                      Dir. Entrega:
+                    </small>
+                    <div className="text-truncate" title={cliente.direccionEntrega}>
+                      {cliente.direccionEntrega}
+                    </div>
+                  </div>
+
+                  {cliente.fechaCreacion && (
+                    <p className="text-muted text-center mt-3" style={{ fontSize: '0.75rem' }}>
+                      Desde {new Date(cliente.fechaCreacion).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="card-footer d-flex justify-content-center gap-1 bg-light">
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => handleEditar(cliente)}
+                  >
+                    <i className="bi bi-pencil-square me-1"></i>Editar
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={() => handleEliminar(cliente.id)}
+                  >
+                    <i className="bi bi-trash-fill me-1"></i>Eliminar
+                  </button>
+                </div>
+              </div>
+            </div>
           ))}
-        </tbody>
-      </table>
-    </div>
+          {clientesFiltrados.length === 0 && (
+            <div className="text-center text-muted col-12">
+              {filtroEmpresa ? 'No hay clientes para la empresa seleccionada.' : 'No hay clientes registrados.'}
+            </div>
+          )}
+        </div>
+      </div>
+      <Footer />
+    </>
   );
 }
-    

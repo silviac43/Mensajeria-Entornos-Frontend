@@ -1,8 +1,9 @@
-// src/pages/Login.jsx
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import logo from '../images/logo.png';
+import Footer from '../components/Footer.jsx';
 
 const Login = () => {
   const [formData, setFormData] = useState({ nombreUsuario: '', password: '' });
@@ -20,7 +21,7 @@ const Login = () => {
       const response = await axios.post('http://localhost:8080/auth/login', formData);
       const token = response.data.token;
       login(token);
-      setLoginSuccess(true); // marca que login fue exitoso
+      setLoginSuccess(true);
       alert('Login exitoso');
     } catch (error) {
       console.error('Error al iniciar sesión:', error.response?.data || error.message);
@@ -36,25 +37,107 @@ const Login = () => {
         navigate('/operador');
       } else if (auth.role === 'ROLE_mensajero') {
         navigate('/mensajero');
-      } else {
-        navigate('/');
       }
     }
-  }, [auth, loginSuccess, navigate]);
+  }, [loginSuccess, auth, navigate]);
 
   return (
-    <main className="login-container">
-      <h2>Iniciar sesión</h2>
-      <form onSubmit={handleSubmit}>
-        <label htmlFor="nombreUsuario">Usuario:</label>
-        <input id="nombreUsuario" type="text" name="nombreUsuario" onChange={handleChange} required />
+    <>
+      <div className="login-container">
+        <div
+          style={{
+            background: 'white',
+            padding: '2rem',
+            borderRadius: '1rem',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.1)',
+            width: '100%',
+            maxWidth: '480px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '1.5rem',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h2 style={{ margin: 0, fontSize: '2rem', color: 'var(--color-primary-dark)' }}>
+              Inicio de sesión
+            </h2>
+            <img
+              src={logo}
+              alt="Logo"
+              style={{ width: '160px', height: '120px', borderRadius: '50%' }}
+            />
+          </div>
 
-        <label htmlFor="password">Contraseña:</label>
-        <input id="password" type="password" name="password" onChange={handleChange} required />
+          <form onSubmit={handleSubmit}>
+            <label>
+              Usuario:
+              <div style={{ position: 'relative', width: '100%' }}>
+                <i 
+                  className="bi bi-person-fill" 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '15px', 
+                    top: '58%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#8A6642',
+                    fontSize: '18px'
+                  }}
+                ></i>
+                <input
+                  type="text"
+                  name="nombreUsuario"
+                  value={formData.nombreUsuario}
+                  onChange={handleChange}
+                  required
+                  placeholder="Nombre de usuario"
+                  style={{ 
+                    paddingLeft: '45px', 
+                    width: '100%',
+                    minWidth: '350px',
+                    height: '45px'
+                  }}
+                />
+              </div>
+            </label>
+            <label>
+              Contraseña:
+              <div style={{ position: 'relative', width: '100%' }}>
+                <i 
+                  className="bi bi-lock-fill" 
+                  style={{ 
+                    position: 'absolute', 
+                    left: '15px', 
+                    top: '58%', 
+                    transform: 'translateY(-50%)', 
+                    color: '#FFD700',
+                    fontSize: '18px'
+                  }}
+                ></i>
+                <input
+                  type="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  required
+                  placeholder="**********************"
+                  style={{ 
+                    paddingLeft: '45px', 
+                    paddingTop: '15px', 
+                    width: '100%',
+                    minWidth: '350px',
+                    height: '45px'
+                  }}
+                />
+              </div>
+            </label>
+            <button type="submit">Ingresar</button>
+          </form>
+        </div>
+      </div>
 
-        <button type="submit">Entrar</button>
-      </form>
-    </main>
+      <Footer />
+    </>
   );
 };
 
