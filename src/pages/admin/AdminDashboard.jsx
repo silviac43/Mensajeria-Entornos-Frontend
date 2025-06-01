@@ -35,7 +35,7 @@ const AdminDashboard = () => {
             <div className="card shadow-sm border-0" style={{ backgroundColor: "#e1ddd3", width: "300px" }}>
               <div className="card-body">
                 <h5 className="card-title">
-                  <i className="bi bi-building me-2" style={{ color: '#007bff' }}></i>
+                  <i className="bi bi-buildings me-2" style={{ color: '#ff6600' }}></i>
                   Gestión de empresas y usuarios
                 </h5>
                 <p className="card-text">
@@ -71,7 +71,7 @@ const AdminDashboard = () => {
             <div className="card shadow-sm border-0" style={{ backgroundColor: "#e1ddd3", width: "300px" }}>
               <div className="card-body">
                 <h5 className="card-title">
-                  <i className="bi bi-grid-3x3-gap-fill me-2" style={{ color: '#fd7e14' }}></i>
+                  <i className="bi bi-grid-3x3-gap-fill me-2" style={{ color: '#033500' }}></i>
                   Panel central
                 </h5>
                 <p className="card-text">

@@ -10,6 +10,7 @@ export default function AdminClientes() {
   const [editingCliente, setEditingCliente] = useState(null);
   const [errores, setErrores] = useState({});
   const [loading, setLoading] = useState(true);
+  const [filtroNombre, setFiltroNombre] = useState('');
   const [filtroEmpresa, setFiltroEmpresa] = useState('');
   const formRef = useRef(null);
 
@@ -25,17 +26,29 @@ export default function AdminClientes() {
 
   useEffect(() => {
     aplicarFiltro();
-  }, [clientes, filtroEmpresa]);
+  }, [clientes, filtroNombre, filtroEmpresa]);
 
   const aplicarFiltro = () => {
-    if (!filtroEmpresa) {
-      setClientesFiltrados(clientes);
-    } else {
-      const filtrados = clientes.filter(cliente => 
+    let filtrados = clientes;
+    
+    if (filtroEmpresa) {
+      filtrados = filtrados.filter(cliente => 
         cliente.empresaMensajeria?.id === parseInt(filtroEmpresa)
       );
-      setClientesFiltrados(filtrados);
     }
+    
+    if (filtroNombre) {
+      filtrados = filtrados.filter(cliente =>
+        cliente.nombre.toLowerCase().includes(filtroNombre.toLowerCase())
+      );
+    }
+    
+    setClientesFiltrados(filtrados);
+  };
+
+  const limpiarFiltros = () => {
+    setFiltroNombre('');
+    setFiltroEmpresa('');
   };
 
   const cargarDatos = async () => {
@@ -188,7 +201,7 @@ export default function AdminClientes() {
         <div className="container py-4" style={{ minHeight: 'calc(100vh - 120px)' }}>
           <h3 className="fw-bold" style={{ fontSize: '30px' }}>
             <i className="bi bi-hammer me-2" style={{ color: '#20b2aa' }}></i>
-            Administrar Clientes
+            Administrar clientes
           </h3>
           <div className="text-center mt-5">
             <div className="spinner-border text-primary" role="status" />
@@ -200,12 +213,12 @@ export default function AdminClientes() {
     );
   }
 
-  return (
+   return (
     <>
       <div className="container py-4" style={{ minHeight: 'calc(100vh - 120px)' }}>
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h3 className="fw-bold" style={{ fontSize: '30px' }}>
-            <i className="bi bi-handshake me-2" style={{ color: '#20b2aa' }}></i>
+            <i className="bi bi-hammer me-2" style={{ color: '#20b2aa' }}></i>
             Administrar clientes
           </h3>
           <button
@@ -229,7 +242,25 @@ export default function AdminClientes() {
           </button>
         </div>
 
-        <div className="row mb-4">
+      <div className="mb-4">
+        <div className="row mb-3">
+          <div className="col-md-4">
+            <div className="card shadow-sm">
+              <div className="card-body">
+                <label className="form-label fw-semibold">
+                  <i className="bi bi-search me-2" style={{ color: '#6c757d' }}></i>
+                  Buscar cliente
+                </label>
+                <input
+                  type="text"
+                  value={filtroNombre}
+                  onChange={(e) => setFiltroNombre(e.target.value)}
+                  className="form-control"
+                  placeholder="Buscar por nombre de cliente"
+                />
+              </div>
+            </div>
+          </div>
           <div className="col-md-4">
             <div className="card shadow-sm">
               <div className="card-body">
@@ -250,17 +281,35 @@ export default function AdminClientes() {
               </div>
             </div>
           </div>
-          <div className="col-md-8 d-flex align-items-end">
+          <div className="col-md-4">
+          </div>
+        </div>
+        
+        <div className="row">
+          <div className="col-md-3">
+            {(filtroNombre || filtroEmpresa) && (
+              <button
+                className="btn btn-outline-secondary"
+                onClick={limpiarFiltros}
+              >
+                <i className="bi bi-x-circle me-1"></i>
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+          <div className="col-md-9 d-flex align-items-center justify-content-end">
             <div className="text-muted">
+              <i className="bi bi-info-circle me-1"></i>
               Mostrando {clientesFiltrados.length} de {clientes.length} clientes
             </div>
           </div>
         </div>
+      </div>
 
         {formVisible && (
           <div ref={formRef} className="card shadow-sm mb-4 mx-auto" style={{ maxWidth: '700px' }}>
             <div className="card-header bg-primary text-white">
-              <i className="bi bi-handshake me-2"></i>
+              <i className="bi bi-hammer me-2"></i>
               {editingCliente?.id ? 'Editar cliente' : 'Nuevo cliente'}
             </div>
             <div className="card-body">
@@ -268,7 +317,7 @@ export default function AdminClientes() {
                 <div className="row">
                   <div className="col-md-6 mb-3">
                     <label className="form-label">
-                      <i className="bi bi-person-fill me-1" style={{ color: '#20b2aa' }}></i>
+                      <i className="bi bi-hammer me-1" style={{ color: '#20b2aa' }}></i>
                       Nombre
                     </label>
                     <input
@@ -382,7 +431,7 @@ export default function AdminClientes() {
                 <div className="row">
                   <div className="col-md-12 mb-3">
                     <label className="form-label">
-                      <i className="bi bi-building me-1" style={{ color: '#ff6600' }}></i>
+                      <i className="bi bi-buildings me-1" style={{ color: '#ff6600' }}></i>
                       Empresa
                     </label>
                     <select
@@ -423,99 +472,109 @@ export default function AdminClientes() {
           </div>
         )}
 
-        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
-          {clientesFiltrados.map(cliente => (
-            <div className="col" key={cliente.id}>
-              <div className="card h-100 shadow-sm">
-                <div className="card-body">
-                  <div className="text-center mb-3">
-                    <i className="bi bi-handshake-fill" style={{ fontSize: '3rem', color: '#20b2aa' }}></i>
+        {clientesFiltrados.length === 0 ? (
+          <div className="text-center py-5">
+            <i className="bi bi-inbox" style={{ fontSize: '4rem', color: '#dee2e6' }}></i>
+            <h4 className="text-muted mt-3">
+              {clientes.length === 0 ? 'No hay clientes registrados' : 'No se encontraron resultados'}
+            </h4>
+            <p className="text-muted">
+              {clientes.length === 0 
+                ? 'Aún no se han registrado clientes en el sistema.' 
+                 : `Intenta ajustar el filtro de búsqueda. No se encontraron clientes con "${filtroNombre}".`
+              }
+            </p>
+          </div>
+        ) : (
+          <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+            {clientesFiltrados.map(cliente => (
+              <div className="col" key={cliente.id}>
+                <div className="card h-100 shadow-sm">
+                  <div className="card-body">
+                    <div className="text-center mb-3">
+                      <i className="bi bi-hammer" style={{ fontSize: '3rem', color: '#20b2aa' }}></i>
+                    </div>
+                    
+                    <h5 className="card-title text-center mb-3">{cliente.nombre}</h5>
+                    
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        <i className="bi bi-envelope me-1" style={{ color: '#007bff' }}></i>
+                        Email:
+                      </small>
+                      <div className="text-truncate">{cliente.email}</div>
+                    </div>
+
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        <i className="bi bi-buildings me-1" style={{ color: '#ff6600' }}></i>
+                        Empresa:
+                      </small>
+                      <div className="fw-semibold text-primary">{getEmpresaName(cliente.empresaMensajeria?.id)}</div>
+                    </div>
+
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        <i className="bi bi-telephone me-1" style={{ color: '#28a745' }}></i>
+                        Tel. Recogida:
+                      </small>
+                      <div>{cliente.telefonoRecogida}</div>
+                    </div>
+
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        <i className="bi bi-telephone me-1" style={{ color: '#ffc107' }}></i>
+                        Tel. Entrega:
+                      </small>
+                      <div>{cliente.telefonoEntrega}</div>
+                    </div>
+
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        <i className="bi bi-geo-alt me-1" style={{ color: '#dc3545' }}></i>
+                        Dir. Recogida:
+                      </small>
+                      <div className="text-truncate" title={cliente.direccionRecogida}>
+                        {cliente.direccionRecogida}
+                      </div>
+                    </div>
+
+                    <div className="mb-2">
+                      <small className="text-muted">
+                        <i className="bi bi-geo-alt me-1" style={{ color: '#6f42c1' }}></i>
+                        Dir. Entrega:
+                      </small>
+                      <div className="text-truncate" title={cliente.direccionEntrega}>
+                        {cliente.direccionEntrega}
+                      </div>
+                    </div>
+
+                    {cliente.fechaCreacion && (
+                      <p className="text-muted text-center mt-3" style={{ fontSize: '0.75rem' }}>
+                        Desde {new Date(cliente.fechaCreacion).toLocaleDateString()}
+                      </p>
+                    )}
                   </div>
                   
-                  <h5 className="card-title text-center mb-3">{cliente.nombre}</h5>
-                  
-                  <div className="mb-2">
-                    <small className="text-muted">
-                      <i className="bi bi-envelope me-1" style={{ color: '#007bff' }}></i>
-                      Email:
-                    </small>
-                    <div className="text-truncate">{cliente.email}</div>
+                  <div className="card-footer d-flex justify-content-center gap-1 bg-light">
+                    <button
+                      className="btn btn-sm btn-outline-primary"
+                      onClick={() => handleEditar(cliente)}
+                    >
+                      <i className="bi bi-pencil-square me-1"></i>Editar
+                    </button>
+                    <button
+                      className="btn btn-sm btn-outline-danger"
+                      onClick={() => handleEliminar(cliente.id)}
+                    >
+                      <i className="bi bi-trash-fill me-1"></i>Eliminar
+                    </button>
                   </div>
-
-                  <div className="mb-2">
-                    <small className="text-muted">
-                      <i className="bi bi-building me-1" style={{ color: '#ff6600' }}></i>
-                      Empresa:
-                    </small>
-                    <div className="fw-semibold text-primary">{getEmpresaName(cliente.empresaMensajeria?.id)}</div>
-                  </div>
-
-                  <div className="mb-2">
-                    <small className="text-muted">
-                      <i className="bi bi-telephone me-1" style={{ color: '#28a745' }}></i>
-                      Tel. Recogida:
-                    </small>
-                    <div>{cliente.telefonoRecogida}</div>
-                  </div>
-
-                  <div className="mb-2">
-                    <small className="text-muted">
-                      <i className="bi bi-telephone me-1" style={{ color: '#ffc107' }}></i>
-                      Tel. Entrega:
-                    </small>
-                    <div>{cliente.telefonoEntrega}</div>
-                  </div>
-
-                  <div className="mb-2">
-                    <small className="text-muted">
-                      <i className="bi bi-geo-alt me-1" style={{ color: '#dc3545' }}></i>
-                      Dir. Recogida:
-                    </small>
-                    <div className="text-truncate" title={cliente.direccionRecogida}>
-                      {cliente.direccionRecogida}
-                    </div>
-                  </div>
-
-                  <div className="mb-2">
-                    <small className="text-muted">
-                      <i className="bi bi-geo-alt me-1" style={{ color: '#6f42c1' }}></i>
-                      Dir. Entrega:
-                    </small>
-                    <div className="text-truncate" title={cliente.direccionEntrega}>
-                      {cliente.direccionEntrega}
-                    </div>
-                  </div>
-
-                  {cliente.fechaCreacion && (
-                    <p className="text-muted text-center mt-3" style={{ fontSize: '0.75rem' }}>
-                      Desde {new Date(cliente.fechaCreacion).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="card-footer d-flex justify-content-center gap-1 bg-light">
-                  <button
-                    className="btn btn-sm btn-outline-primary"
-                    onClick={() => handleEditar(cliente)}
-                  >
-                    <i className="bi bi-pencil-square me-1"></i>Editar
-                  </button>
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => handleEliminar(cliente.id)}
-                  >
-                    <i className="bi bi-trash-fill me-1"></i>Eliminar
-                  </button>
                 </div>
               </div>
-            </div>
-          ))}
-          {clientesFiltrados.length === 0 && (
-            <div className="text-center text-muted col-12">
-              {filtroEmpresa ? 'No hay clientes para la empresa seleccionada.' : 'No hay clientes registrados.'}
-            </div>
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
       <Footer />
     </>

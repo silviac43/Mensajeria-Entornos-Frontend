@@ -159,7 +159,7 @@ export default function AdminInformacion() {
   if (loading) return <div className="p-4">Cargando información...</div>;
   if (!usuario) return <div className="p-4 text-danger">No se pudo cargar el usuario.</div>;
 
-  const fechaCreacion = new Date(usuario.fechaCreacion).toLocaleDateString();
+  const fechaCreacion = new Date(usuario.fechaCreacion).toLocaleDateString('es-ES');
 
   return (
     <>
@@ -184,10 +184,11 @@ export default function AdminInformacion() {
             />
           </div>
 
-          <p className="text-center mt-3"><p className="text-center mt-3">
+            <p className="text-center mt-3">
               <i className="bi bi-calendar-check me-2" style={{ color: '#28a745' }}></i>
               <strong>Te uniste a Agatha el día:</strong> {fechaCreacion}
-            </p></p>
+            </p>
+
 
           <div className="d-flex justify-content-end mb-3">
             <span

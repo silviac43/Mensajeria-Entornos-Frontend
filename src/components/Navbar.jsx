@@ -39,7 +39,7 @@ const Navbar = () => {
             alignItems: "center",
             textDecoration: "none",
             paddingRight: "1rem",
-            borderRight: "1px solid #ccc",
+            borderRight: "1px solid #999",
           }}
         >
           <img

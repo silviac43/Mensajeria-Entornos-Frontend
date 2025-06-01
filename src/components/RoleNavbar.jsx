@@ -51,8 +51,6 @@ const RoleNavbar = ({ userRole, onLogout }) => {
           alignItems: "center",
           gap: "2rem",
           flexGrow: 1,
-          borderRight: "1px solid #ccc",
-          paddingRight: "1rem",
         }}
       >
         <Link
@@ -63,6 +61,8 @@ const RoleNavbar = ({ userRole, onLogout }) => {
             textDecoration: "none",
             color: "#374151",
             gap: "0.5rem",
+            paddingRight: "1rem",
+            borderRight: "1px solid #999",
           }}
         >
           <img

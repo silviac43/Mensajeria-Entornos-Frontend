@@ -389,7 +389,6 @@ section[id] h6 {
   height: 100vh;
   margin: 0;
   padding: 2rem 1rem;
-  background-color: var(--color-bg-overlay);
   display: flex;
   flex-direction: column;
   justify-content: center;

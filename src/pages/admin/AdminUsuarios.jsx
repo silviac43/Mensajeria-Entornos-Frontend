@@ -27,6 +27,9 @@ export default function AdminUsuarios() {
   const [editingUsuario, setEditingUsuario] = useState(null);
   const [errores, setErrores] = useState({});
   const [loading, setLoading] = useState(true);
+  const [filtroNombre, setFiltroNombre] = useState('');
+  const [filtroEmpresa, setFiltroEmpresa] = useState('');
+  const [filtroRol, setFiltroRol] = useState(''); 
   const formRef = useRef(null);
 
   const token = localStorage.getItem('token');
@@ -40,6 +43,19 @@ export default function AdminUsuarios() {
   }, []);
 
   const [usuarioActualId, setUsuarioActualId] = useState(null);
+
+  const usuariosFiltrados = usuarios.filter(usuario => {
+    const coincideNombre = usuario.nombreUsuario.toLowerCase().includes(filtroNombre.toLowerCase()) ||
+                          usuario.email.toLowerCase().includes(filtroNombre.toLowerCase());
+    
+    const coincideEmpresa = filtroEmpresa === '' || 
+                           (usuario.empresaMensajeria?.id && 
+                            usuario.empresaMensajeria.id.toString() === filtroEmpresa);
+    
+    const coincideRol = filtroRol === '' || usuario.rol === filtroRol;
+    
+    return coincideNombre && coincideEmpresa && coincideRol;
+  });
 
   const cargarDatos = async () => {
     setLoading(true);
@@ -68,7 +84,6 @@ export default function AdminUsuarios() {
       setLoading(false);
     }
   };
-
 
   const validarCampo = (name, value) => {
     let error = '';
@@ -200,13 +215,19 @@ export default function AdminUsuarios() {
     }
   };
 
+  const limpiarFiltros = () => {
+    setFiltroNombre('');
+    setFiltroEmpresa('');
+    setFiltroRol('');
+  };
+
   if (loading) {
     return (
       <>
       <div className="container py-4">
         <h3 className="fw-bold" style={{ fontSize: '30px' }}>
-          <i className="bi bi-people me-2 text-primary"></i>
-          Administrar Usuarios
+          <i className="bi bi-people me-2" style={{ color: '#6f42c1' }}></i>
+          Administrar usuarios
         </h3>
         <div className="text-center mt-5">
           <div className="spinner-border text-primary" role="status" />
@@ -223,7 +244,7 @@ export default function AdminUsuarios() {
     <div className="container py-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="fw-bold" style={{ fontSize: '30px' }}>
-          <i className="bi bi-people me-2 text-primary"></i>
+          <i className="bi bi-people me-2" style={{ color: '#6f42c1' }}></i>
           Administrar usuarios
         </h3>
         <button
@@ -242,6 +263,90 @@ export default function AdminUsuarios() {
           <i className="bi bi-plus-lg me-2"></i>
           Nuevo usuario
         </button>
+      </div>
+
+      <div className="mb-4">
+        <div className="row mb-3">
+          <div className="col-md-3">
+            <div className="card shadow-sm">
+              <div className="card-body">
+                <label className="form-label fw-semibold">
+                  <i className="bi bi-search me-2" style={{ color: '#6c757d' }}></i>
+                  Buscar usuario
+                </label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Buscar por nombre o email"
+                  value={filtroNombre}
+                  onChange={(e) => setFiltroNombre(e.target.value)}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card shadow-sm">
+              <div className="card-body">
+                <label className="form-label fw-semibold">
+                  <i className="bi bi-funnel me-2" style={{ color: '#6c757d' }}></i>
+                  Filtrar por empresa
+                </label>
+                <select
+                  value={filtroEmpresa}
+                  onChange={(e) => setFiltroEmpresa(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="">Todas las empresas</option>
+                  {empresas.map(empresa => (
+                    <option key={empresa.id} value={empresa.id}>{empresa.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+            <div className="card shadow-sm">
+              <div className="card-body">
+                <label className="form-label fw-semibold">
+                  <i className="bi bi-person-badge me-2" style={{ color: '#6c757d' }}></i>
+                  Filtrar por rol
+                </label>
+                <select
+                  value={filtroRol}
+                  onChange={(e) => setFiltroRol(e.target.value)}
+                  className="form-select"
+                >
+                  <option value="">Todos los roles</option>
+                  {ROLES.map(rol => (
+                    <option key={rol} value={rol}>{rolNombre[rol]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="col-md-3">
+          </div>
+        </div>
+        
+        <div className="row">
+          <div className="col-md-3">
+            {(filtroNombre || filtroEmpresa || filtroRol) && (
+              <button
+                className="btn btn-outline-secondary"
+                onClick={limpiarFiltros}
+              >
+                <i className="bi bi-x-circle me-1"></i>
+                Limpiar filtros
+              </button>
+            )}
+          </div>
+          <div className="col-md-9 d-flex align-items-center justify-content-end">
+            <div className="text-muted">
+              <i className="bi bi-info-circle me-1"></i>
+              Mostrando {usuariosFiltrados.length} de {usuarios.length} usuarios
+            </div>
+          </div>
+        </div>
       </div>
 
       {formVisible && (
@@ -314,7 +419,7 @@ export default function AdminUsuarios() {
 
                 <div className="col-md-6 mb-3">
                   <label className="form-label">
-                    <i className="bi bi-building me-2" style={{ color: '#ff6600' }}></i>
+                    <i className="bi bi-buildings me-2" style={{ color: '#ff6600' }}></i>
                     Empresa
                   </label>
                   <select
@@ -355,55 +460,85 @@ export default function AdminUsuarios() {
         </div>
       )}
 
-      <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
-        {usuarios.map(usuario => (
-          <div className="col" key={usuario.id}>
-            <div className="card h-100 shadow-sm">
-              <div className="card-body text-center">
-                <img
-                  src={rolImagen[usuario.rol] || '/src/images/default.png'}
-                  alt={rolNombre[usuario.rol] || 'Usuario'}
-                  className="rounded-circle mb-3"
-                  style={{ width: '80px', height: '80px', objectFit: 'cover' , border: '3px solid #ccc',}}
-                  onError={(e) => {
-                    e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNDAiIGZpbGw9IiNmMGYwZjAiLz4KPHN2ZyB4PSIyMCIgeT0iMjAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjOTk5Ij4KPHA+VXN1YXJpbzwvcD4KPHN2Zz4=';
-                  }}
-                />
-                <h5 className="card-title mb-2">{usuario.nombreUsuario}</h5>
-                <p className="card-text text-muted small mb-1">{usuario.email}</p>
-                <p className="text-primary fw-semibold mb-1">{rolNombre[usuario.rol]}</p>
-                <p className="text-secondary small mb-2">{usuario.empresaMensajeria?.nombre || 'N/A'}</p>
-                <p className="text-muted" style={{ fontSize: '0.75rem' }}>
-                  Desde {new Date(usuario.fechaCreacion).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="card-footer d-flex justify-content-center gap-1 bg-light flex-wrap">
-                <button
-                  className="btn btn-sm btn-outline-primary"
-                  onClick={() => handleEditar(usuario)}
-                >
-                  <i className="bi bi-pencil-square me-1"></i>Editar
-                </button>
-                <button
-                  className="btn btn-sm btn-outline-danger"
-                  onClick={() => handleEliminar(usuario.id)}
-                >
-                  <i className="bi bi-trash-fill me-1"></i>Eliminar
-                </button>
-                <button
-                  className="btn btn-sm btn-outline-success"
-                  onClick={() => handleResetPassword(usuario.id)}
-                >
-                  <i className="bi bi-key me-1"></i>Reset
-                </button>
+      {usuariosFiltrados.length === 0 ? (
+        <div className="text-center py-5">
+          <i className="bi bi-inbox" style={{ fontSize: '4rem', color: '#dee2e6' }}></i>
+          <h4 className="text-muted mt-3">
+            {usuarios.length === 0 ? 'No hay usuarios registrados' : 'No se encontraron usuarios'}
+          </h4>
+          <p className="text-muted">
+            {usuarios.length === 0 
+              ? 'Aún no se han registrado usuarios en el sistema.' 
+              : 'Intenta ajustar los filtros de búsqueda. No se encontraron usuarios con los criterios seleccionados.'
+            }
+          </p>
+        </div>
+      ) : (
+        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+          {usuariosFiltrados.map(usuario => (
+            <div className="col" key={usuario.id}>
+              <div className="card h-100 shadow-sm">
+                <div className="card-body text-center">
+                  <img
+                    src={rolImagen[usuario.rol] || '/src/images/default.png'}
+                    alt={rolNombre[usuario.rol] || 'Usuario'}
+                    className="rounded-circle mb-3"
+                    style={{ width: '80px', height: '80px', objectFit: 'cover' , border: '3px solid #ccc',}}
+                    onError={(e) => {
+                      e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iODAiIGhlaWdodD0iODAiIHZpZXdCb3g9IjAgMCA4MCA4MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPGNpcmNsZSBjeD0iNDAiIGN5PSI0MCIgcj0iNDAiIGZpbGw9IiNmMGYwZjAiLz4KPHN2ZyB4PSIyMCIgeT0iMjAiIHdpZHRoPSI0MCIgaGVpZ2h0PSI0MCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSIjOTk5Ij4KPHA+VXN1YXJpbzwvcD4KPHN2Zz4=';
+                    }}
+                  />
+                  <h5 className="card-title mb-2">{usuario.nombreUsuario}</h5>
+                  <div className="mb-2 text-start">
+                    <i className="bi bi-envelope me-1" style={{ color: '#007bff' }}></i>
+                    Email:
+                    <div className="fw-semibold text-primary">{usuario.email}</div>
+                  </div>
+
+                  <div className="mb-2 text-start">
+                    <i className="bi bi-award-fill" style={{ color: '#ff0080' }}></i>
+                    Rol:
+                    <div>{rolNombre[usuario.rol]}</div>
+                  </div>
+
+                  <div className="mb-2 text-start">
+                    <i className="bi-buildings me-2" style={{ color: '#ff6600' }}></i>
+                    Empresa:
+                    <div>{usuario.empresaMensajeria?.nombre || 'N/A'}</div>
+                  </div>
+
+                  <div className="mb-2 text-start">
+                    <i className="bi bi-calendar-event me-1" style={{ color: '#28a745' }}></i>
+                     Se unió el día:
+                    <div>{new Date(usuario.fechaCreacion).toLocaleDateString('es-ES')}</div>
+                  </div>
+                    
+                </div>
+                <div className="card-footer d-flex justify-content-center gap-1 bg-light flex-wrap">
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => handleEditar(usuario)}
+                  >
+                    <i className="bi bi-pencil-square me-1"></i>Editar
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={() => handleEliminar(usuario.id)}
+                  >
+                    <i className="bi bi-trash-fill me-1"></i>Eliminar
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-success"
+                    onClick={() => handleResetPassword(usuario.id)}
+                  >
+                    <i className="bi bi-key me-1"></i>Reset
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        ))}
-        {usuarios.length === 0 && (
-          <div className="text-center text-muted col-12">No hay usuarios registrados.</div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
     <Footer />
     </>
