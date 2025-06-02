@@ -336,11 +336,15 @@ export default function HistorialPedidosOperador() {
                           </div>
                         </div>
 
-                        <div className="text-muted small d-flex align-items-center" style={{ gap: '0.5rem' }}>
-                          <i className="bi bi-calendar-event" style={{ color: '#28a745' }}></i>
-                          <span>{formatearFecha(h.fechaCambio).split(' ')[0].replace(',', '')}</span>
-                          <i className="bi bi-clock" style={{ color: '#6c757d' }}></i>
-                          <span>{formatearFecha(h.fechaCambio).split(' ')[1]}</span>
+                        <div className="text-muted small d-flex flex-column align-items-end">
+                          <div className="d-flex align-items-center mb-1" style={{ gap: '0.25rem' }}>
+                            <i className="bi bi-calendar-event" style={{ color: '#28a745' }}></i>
+                            <span>{formatearFecha(h.fechaCambio).split(' ')[0].replace(',', '')}</span>
+                          </div>
+                          <div className="d-flex align-items-center" style={{ gap: '0.25rem' }}>
+                            <i className="bi bi-clock" style={{ color: '#6c757d' }}></i>
+                            <span>{formatearFecha(h.fechaCambio).split(' ')[1]}</span>
+                          </div>
                         </div>
                       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import Footer from '../../components/Footer';
+import ModalMapa from '../../components/ModalMapa';
 
 export default function OperadorClientes() {
   const [clientes, setClientes] = useState([]);
@@ -13,6 +14,10 @@ export default function OperadorClientes() {
   const [loading, setLoading] = useState(true);
   const [filtroNombre, setFiltroNombre] = useState('');
   const formRef = useRef(null);
+  const [mapaVisible, setMapaVisible] = useState(false);
+  const [clienteParaMapa, setClienteParaMapa] = useState(null);
+  const [coordenadas, setCoordenadas] = useState({ recogida: null, entrega: null });
+  const [cargandoMapa, setCargandoMapa] = useState(false);
 
   const token = localStorage.getItem('token');
   const headers = {
@@ -193,6 +198,214 @@ export default function OperadorClientes() {
       console.error('Error al guardar cliente (catch):', err);
       console.error('Detalles del error (respuesta completa):', err.response?.data || err.message);
       alert(`Error al guardar cliente: ${err.response?.data?.message || err.message}`);
+    }
+  };
+
+ const geocodificarDireccion = async (direccion) => {
+    const limpiarDireccion = (dir) => {
+      return dir
+        .replace(/,\s*Local\s+\d+/gi, '') 
+        .replace(/,\s*Piso\s+\d+/gi, '') 
+        .replace(/,\s*Oficina\s+\d+/gi, '') 
+        .replace(/,\s*Apartamento\s+\d+/gi, '') 
+        .replace(/,\s*Apto\s+\d+/gi, '') 
+        .replace(/,\s*Torre\s+[A-Z]\d*/gi, '') 
+        .replace(/,\s*Bloque\s+\d+/gi, '') 
+        .replace(/\s+/g, ' ') 
+        .trim();
+    };
+
+    const generarVariacionesBusqueda = (direccion) => {
+      const direccionLimpia = limpiarDireccion(direccion);
+      
+      const variaciones = [
+        direccion,
+        direccionLimpia,
+        `${direccionLimpia}, Colombia`,
+        
+        `${direccionLimpia}, shopping center, Colombia`,
+        `${direccionLimpia}, mall, Colombia`,
+        
+        `${direccionLimpia}, building, Colombia`,
+        `${direccionLimpia}, office building, Colombia`,
+        `${direccionLimpia}, tower, Colombia`,
+        `${direccionLimpia}, business center, Colombia`,
+        
+        direccionLimpia.includes('Bogota') ? direccionLimpia : `${direccionLimpia}, Bogotá, Colombia`,
+        direccionLimpia.includes('Bogota') ? direccionLimpia : `${direccionLimpia}, Bogotá DC, Colombia`,
+        direccionLimpia.includes('Bogota') ? direccionLimpia : `${direccionLimpia}, Bogotá, Cundinamarca, Colombia`,
+        
+        direccionLimpia.replace('#', 'No. '),
+        direccionLimpia.replace('#', '-'),
+        direccionLimpia.replace('Avenida', 'Av'),
+        direccionLimpia.replace('Carrera', 'Cra'),
+        direccionLimpia.replace('Calle', 'Cl'),
+        
+        direccionLimpia.replace('Centro Comercial', 'CC'),
+        direccionLimpia.replace('Centro Comercial', 'Mall'),
+        
+        direccionLimpia.replace('Torre Empresarial', 'Torre'),
+        direccionLimpia.replace('Torre Empresarial', 'Business Tower'),
+        direccionLimpia.replace('Edificio', 'Building'),
+        direccionLimpia.replace('Torre', 'Tower'),
+        direccionLimpia.replace('Centro Empresarial', 'Business Center'),
+        direccionLimpia.replace('Complejo Empresarial', 'Business Complex'),
+        
+        direccionLimpia.replace('Torre Empresarial ', '').replace('Edificio ', '').replace('Torre ', ''),
+        `${direccionLimpia.replace('Torre Empresarial ', '').replace('Edificio ', '').replace('Torre ', '')}, Bogotá, Colombia`,
+      ];
+
+      return [...new Set(variaciones.filter(v => v && v.trim().length > 0))];
+    };
+
+    const formatosDireccion = generarVariacionesBusqueda(direccion);
+
+    for (const formato of formatosDireccion) {
+      try {
+        const coordenadas = await intentarGeocodificacion(formato);
+        if (coordenadas) {
+          return coordenadas;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.warn(`Error geocodificando "${formato}":`, error.message);
+        continue;
+      }
+    }
+
+    console.error(` No se pudo geocodificar: "${direccion}"`);
+    return null;
+  };
+
+  const intentarGeocodificacion = async (direccion) => {
+    try {
+      const coordenadas = await geocodificarConNominatim(direccion);
+      if (coordenadas) return coordenadas;
+    } catch (error) {
+      console.warn('Error con Nominatim:', error.message);
+    }
+
+    try {
+      const coordenadas = await geocodificarConPhoton(direccion);
+      if (coordenadas) return coordenadas;
+    } catch (error) {
+      console.warn('Error con Photon:', error.message);
+    }
+
+    return null;
+  };
+
+  const geocodificarConNominatim = async (direccion) => {
+    const url = `https://nominatim.openstreetmap.org/search?` + 
+      `format=json&` +
+      `q=${encodeURIComponent(direccion)}&` +
+      `limit=3&` + 
+      `countrycodes=co&` +
+      `addressdetails=1&` +
+      `extratags=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'DeliveryApp/1.0' 
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data && data.length > 0) {
+      const resultado = data[0];
+      
+      const lat = parseFloat(resultado.lat);
+      const lng = parseFloat(resultado.lon);
+      
+      if (lat >= -4.2 && lat <= 12.5 && lng >= -81.8 && lng <= -66.8) {
+        return { lat, lng };
+      }
+    }
+
+    return null;
+  };
+
+  const geocodificarConPhoton = async (direccion) => {
+    const url = `https://photon.komoot.io/api/?` +
+      `q=${encodeURIComponent(direccion)}&` +
+      `limit=3&` +
+      `lang=es`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data && data.features && data.features.length > 0) {
+      for (const feature of data.features) {
+        const properties = feature.properties;
+        
+        if (properties.country === 'Colombia' || properties.country === 'CO') {
+          const [lng, lat] = feature.geometry.coordinates;
+          
+          if (lat >= -4.2 && lat <= 12.5 && lng >= -81.8 && lng <= -66.8) {
+            return { lat, lng };
+          }
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const mostrarMapa = async (cliente) => {
+    setCargandoMapa(true);
+    setClienteParaMapa(cliente);
+    setMapaVisible(true);
+    
+    try {    
+      console.log('🗺️ Iniciando geocodificación para:', {
+        recogida: cliente.direccionRecogida,
+        entrega: cliente.direccionEntrega
+      });
+
+      const [coordRecogida, coordEntrega] = await Promise.all([
+        geocodificarDireccion(cliente.direccionRecogida),
+        geocodificarDireccion(cliente.direccionEntrega)
+      ]);
+      
+      if (!coordRecogida) {
+        console.warn('No se pudo geocodificar la dirección de recogida');
+      }
+      
+      if (!coordEntrega) {
+        console.warn('No se pudo geocodificar la dirección de entrega');
+      }
+
+      if (!coordRecogida && !coordEntrega) {
+        alert('No se pudieron encontrar las ubicaciones en el mapa. Verifique las direcciones.');
+        return;
+      }
+
+      if (!coordRecogida || !coordEntrega) {
+        alert('Solo se pudo encontrar una de las ubicaciones. El mapa puede no mostrar la ruta completa.');
+      }
+      
+      setCoordenadas({
+        recogida: coordRecogida,
+        entrega: coordEntrega
+      });
+      
+    } catch (error) {
+      console.error('Error durante la geocodificación:', error);
+      alert('Error al cargar las ubicaciones en el mapa. Intente nuevamente.');
+    } finally {
+      setCargandoMapa(false);
     }
   };
 
@@ -483,7 +696,7 @@ export default function OperadorClientes() {
                       <i className="bi bi-envelope me-1" style={{ color: '#007bff' }}></i>
                       Email:
                     </small>
-                    <div className="text-truncate">{cliente.email}</div>
+                    <div className="fw-semibold text-primary">{cliente.email}</div>
                   </div>
 
                   <div className="mb-2">
@@ -529,20 +742,27 @@ export default function OperadorClientes() {
                   )}
                 </div>
                 
-                <div className="card-footer d-flex justify-content-center gap-1 bg-light">
-                  <button
-                    className="btn btn-sm btn-outline-primary"  
-                    onClick={() => handleEditar(cliente)}
-                  >
-                    <i className="bi bi-pencil-square me-1"></i>Editar
-                  </button>
-                  <button
-                    className="btn btn-sm btn-outline-danger"
-                    onClick={() => handleEliminar(cliente.id)}
-                  >
-                    <i className="bi bi-trash-fill me-1"></i>Eliminar
-                  </button>
-                </div>
+                  <div className="card-footer d-flex justify-content-center gap-1 bg-light">
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleEditar(cliente)}
+                      >
+                        <i className="bi bi-pencil-square me-1"></i>Editar
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-info"
+                        onClick={() => mostrarMapa(cliente)}
+                        title="Ver ruta en mapa"
+                      >
+                        <i className="bi bi-map me-1"></i>Ruta
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleEliminar(cliente.id)}
+                      >
+                        <i className="bi bi-trash-fill me-1"></i>Eliminar
+                      </button>
+                  </div>
               </div>
             </div>
           ))}
@@ -561,6 +781,16 @@ export default function OperadorClientes() {
               </p>
             </div>
           )}
+          <ModalMapa 
+          mapaVisible={mapaVisible}
+          cargandoMapa={cargandoMapa}
+          pedidoParaMapa={clienteParaMapa}
+          coordenadas={coordenadas}
+          setMapaVisible={setMapaVisible}
+          setPedidoParaMapa={setClienteParaMapa}
+          setCoordenadas={setCoordenadas}
+          setCargandoMapa={setCargandoMapa}
+        />
         </div>
       <Footer />
     </>

@@ -267,7 +267,7 @@ export default function AdminUsuarios() {
 
       <div className="mb-4">
         <div className="row mb-3">
-          <div className="col-md-3">
+          <div className="col-md-4">
             <div className="card shadow-sm">
               <div className="card-body">
                 <label className="form-label fw-semibold">
@@ -284,7 +284,7 @@ export default function AdminUsuarios() {
               </div>
             </div>
           </div>
-          <div className="col-md-3">
+          <div className="col-md-4">
             <div className="card shadow-sm">
               <div className="card-body">
                 <label className="form-label fw-semibold">
@@ -304,7 +304,7 @@ export default function AdminUsuarios() {
               </div>
             </div>
           </div>
-          <div className="col-md-3">
+          <div className="col-md-4">
             <div className="card shadow-sm">
               <div className="card-body">
                 <label className="form-label fw-semibold">
@@ -324,12 +324,10 @@ export default function AdminUsuarios() {
               </div>
             </div>
           </div>
-          <div className="col-md-3">
-          </div>
         </div>
         
         <div className="row">
-          <div className="col-md-3">
+          <div className="col-md-4">
             {(filtroNombre || filtroEmpresa || filtroRol) && (
               <button
                 className="btn btn-outline-secondary"
@@ -340,7 +338,7 @@ export default function AdminUsuarios() {
               </button>
             )}
           </div>
-          <div className="col-md-9 d-flex align-items-center justify-content-end">
+          <div className="col-md-8 d-flex align-items-center justify-content-end">
             <div className="text-muted">
               <i className="bi bi-info-circle me-1"></i>
               Mostrando {usuariosFiltrados.length} de {usuarios.length} usuarios
@@ -474,7 +472,7 @@ export default function AdminUsuarios() {
           </p>
         </div>
       ) : (
-        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-4 g-4">
+        <div className="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
           {usuariosFiltrados.map(usuario => (
             <div className="col" key={usuario.id}>
               <div className="card h-100 shadow-sm">
@@ -490,26 +488,34 @@ export default function AdminUsuarios() {
                   />
                   <h5 className="card-title mb-2">{usuario.nombreUsuario}</h5>
                   <div className="mb-2 text-start">
-                    <i className="bi bi-envelope me-1" style={{ color: '#007bff' }}></i>
-                    Email:
+                    <div className="text-muted small">
+                      <i className="bi bi-envelope me-1" style={{ color: '#007bff' }}></i>
+                      Email:
+                    </div>
                     <div className="fw-semibold text-primary">{usuario.email}</div>
                   </div>
 
                   <div className="mb-2 text-start">
-                    <i className="bi bi-award-fill" style={{ color: '#ff0080' }}></i>
-                    Rol:
+                    <div className="text-muted small">
+                      <i className="bi bi-award-fill me-1" style={{ color: '#ff0080' }}></i>
+                      Rol:
+                    </div>
                     <div>{rolNombre[usuario.rol]}</div>
                   </div>
 
                   <div className="mb-2 text-start">
-                    <i className="bi-buildings me-2" style={{ color: '#ff6600' }}></i>
-                    Empresa:
+                    <div className="text-muted small">
+                      <i className="bi bi-buildings me-1" style={{ color: '#ff6600' }}></i>
+                      Empresa:
+                    </div>
                     <div>{usuario.empresaMensajeria?.nombre || 'N/A'}</div>
                   </div>
 
                   <div className="mb-2 text-start">
-                    <i className="bi bi-calendar-event me-1" style={{ color: '#28a745' }}></i>
-                     Se unió el día:
+                    <div className="text-muted small">
+                      <i className="bi bi-calendar-event me-1" style={{ color: '#28a745' }}></i>
+                      Se unió el día:
+                    </div>
                     <div>{new Date(usuario.fechaCreacion).toLocaleDateString('es-ES')}</div>
                   </div>
                     

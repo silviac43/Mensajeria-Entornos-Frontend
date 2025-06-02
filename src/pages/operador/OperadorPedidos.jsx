@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import axios from 'axios';
 import Footer from '../../components/Footer';
+import ModalMapa from '../../components/ModalMapa';
 
 export default function OperadorPedidos() {
   const [pedidos, setPedidos] = useState([]);
@@ -19,6 +20,10 @@ export default function OperadorPedidos() {
   const [pedidosFiltrados, setPedidosFiltrados] = useState([]);
   const formRef = useRef(null);
   const clienteInputRef = useRef(null);
+  const [mapaVisible, setMapaVisible] = useState(false);
+  const [pedidoParaMapa, setPedidoParaMapa] = useState(null);
+  const [coordenadas, setCoordenadas] = useState({ recogida: null, entrega: null });
+  const [cargandoMapa, setCargandoMapa] = useState(false);
 
   const token = localStorage.getItem('token');
   const headers = {
@@ -173,10 +178,30 @@ export default function OperadorPedidos() {
     return '';
   };
 
-  const handleInputChange = (e) => {
+ const handleInputChange = (e) => {
     const { name, value } = e.target;
 
-    if (['cliente', 'mensajero'].includes(name)) {
+    if (name === 'cliente') {
+      const clienteSeleccionado = clientes.find(c => c.id === Number(value));
+      
+      setEditingPedido(prev => ({
+        ...prev,
+        cliente: value ? { id: Number(value) } : null,
+        direccionRecogida: prev.direccionRecogida || clienteSeleccionado?.direccionRecogida || '',
+        direccionEntrega: prev.direccionEntrega || clienteSeleccionado?.direccionEntrega || '',
+        telefonoRecogida: prev.telefonoRecogida || clienteSeleccionado?.telefonoRecogida || '',
+        telefonoEntrega: prev.telefonoEntrega || clienteSeleccionado?.telefonoEntrega || '',
+      }));
+      
+      setErrores(prev => ({
+        ...prev,
+        cliente: value ? '' : 'Debe seleccionar una opción',
+        direccionRecogida: clienteSeleccionado?.direccionRecogida ? '' : prev.direccionRecogida,
+        direccionEntrega: clienteSeleccionado?.direccionEntrega ? '' : prev.direccionEntrega,
+        telefonoRecogida: clienteSeleccionado?.telefonoRecogida ? '' : prev.telefonoRecogida,
+        telefonoEntrega: clienteSeleccionado?.telefonoEntrega ? '' : prev.telefonoEntrega,
+      }));
+    } else if (name === 'mensajero') {
       setEditingPedido(prev => ({
         ...prev,
         [name]: value ? { id: Number(value) } : null,
@@ -305,6 +330,214 @@ export default function OperadorPedidos() {
     setBusquedaCliente('');
     setMostrarListaClientes(false);
     setClientesFiltrados([]);
+  };
+
+  const geocodificarDireccion = async (direccion) => {
+    const limpiarDireccion = (dir) => {
+      return dir
+        .replace(/,\s*Local\s+\d+/gi, '') 
+        .replace(/,\s*Piso\s+\d+/gi, '') 
+        .replace(/,\s*Oficina\s+\d+/gi, '') 
+        .replace(/,\s*Apartamento\s+\d+/gi, '') 
+        .replace(/,\s*Apto\s+\d+/gi, '') 
+        .replace(/,\s*Torre\s+[A-Z]\d*/gi, '') 
+        .replace(/,\s*Bloque\s+\d+/gi, '') 
+        .replace(/\s+/g, ' ') 
+        .trim();
+    };
+
+    const generarVariacionesBusqueda = (direccion) => {
+      const direccionLimpia = limpiarDireccion(direccion);
+      
+      const variaciones = [
+        direccion,
+        direccionLimpia,
+        `${direccionLimpia}, Colombia`,
+        
+        `${direccionLimpia}, shopping center, Colombia`,
+        `${direccionLimpia}, mall, Colombia`,
+        
+        `${direccionLimpia}, building, Colombia`,
+        `${direccionLimpia}, office building, Colombia`,
+        `${direccionLimpia}, tower, Colombia`,
+        `${direccionLimpia}, business center, Colombia`,
+        
+        direccionLimpia.includes('Bogota') ? direccionLimpia : `${direccionLimpia}, Bogotá, Colombia`,
+        direccionLimpia.includes('Bogota') ? direccionLimpia : `${direccionLimpia}, Bogotá DC, Colombia`,
+        direccionLimpia.includes('Bogota') ? direccionLimpia : `${direccionLimpia}, Bogotá, Cundinamarca, Colombia`,
+        
+        direccionLimpia.replace('#', 'No. '),
+        direccionLimpia.replace('#', '-'),
+        direccionLimpia.replace('Avenida', 'Av'),
+        direccionLimpia.replace('Carrera', 'Cra'),
+        direccionLimpia.replace('Calle', 'Cl'),
+        
+        direccionLimpia.replace('Centro Comercial', 'CC'),
+        direccionLimpia.replace('Centro Comercial', 'Mall'),
+        
+        direccionLimpia.replace('Torre Empresarial', 'Torre'),
+        direccionLimpia.replace('Torre Empresarial', 'Business Tower'),
+        direccionLimpia.replace('Edificio', 'Building'),
+        direccionLimpia.replace('Torre', 'Tower'),
+        direccionLimpia.replace('Centro Empresarial', 'Business Center'),
+        direccionLimpia.replace('Complejo Empresarial', 'Business Complex'),
+        
+        direccionLimpia.replace('Torre Empresarial ', '').replace('Edificio ', '').replace('Torre ', ''),
+        `${direccionLimpia.replace('Torre Empresarial ', '').replace('Edificio ', '').replace('Torre ', '')}, Bogotá, Colombia`,
+      ];
+
+      return [...new Set(variaciones.filter(v => v && v.trim().length > 0))];
+    };
+
+    const formatosDireccion = generarVariacionesBusqueda(direccion);
+
+    for (const formato of formatosDireccion) {
+      try {
+        const coordenadas = await intentarGeocodificacion(formato);
+        if (coordenadas) {
+          return coordenadas;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+      } catch (error) {
+        console.warn(`Error geocodificando "${formato}":`, error.message);
+        continue;
+      }
+    }
+
+    console.error(` No se pudo geocodificar: "${direccion}"`);
+    return null;
+  };
+
+  const intentarGeocodificacion = async (direccion) => {
+    try {
+      const coordenadas = await geocodificarConNominatim(direccion);
+      if (coordenadas) return coordenadas;
+    } catch (error) {
+      console.warn('Error con Nominatim:', error.message);
+    }
+
+    try {
+      const coordenadas = await geocodificarConPhoton(direccion);
+      if (coordenadas) return coordenadas;
+    } catch (error) {
+      console.warn('Error con Photon:', error.message);
+    }
+
+    return null;
+  };
+
+  const geocodificarConNominatim = async (direccion) => {
+    const url = `https://nominatim.openstreetmap.org/search?` + 
+      `format=json&` +
+      `q=${encodeURIComponent(direccion)}&` +
+      `limit=3&` + 
+      `countrycodes=co&` +
+      `addressdetails=1&` +
+      `extratags=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        'User-Agent': 'DeliveryApp/1.0' 
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data && data.length > 0) {
+      const resultado = data[0];
+      
+      const lat = parseFloat(resultado.lat);
+      const lng = parseFloat(resultado.lon);
+      
+      if (lat >= -4.2 && lat <= 12.5 && lng >= -81.8 && lng <= -66.8) {
+        return { lat, lng };
+      }
+    }
+
+    return null;
+  };
+
+  const geocodificarConPhoton = async (direccion) => {
+    const url = `https://photon.komoot.io/api/?` +
+      `q=${encodeURIComponent(direccion)}&` +
+      `limit=3&` +
+      `lang=es`;
+
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (data && data.features && data.features.length > 0) {
+      for (const feature of data.features) {
+        const properties = feature.properties;
+        
+        if (properties.country === 'Colombia' || properties.country === 'CO') {
+          const [lng, lat] = feature.geometry.coordinates;
+          
+          if (lat >= -4.2 && lat <= 12.5 && lng >= -81.8 && lng <= -66.8) {
+            return { lat, lng };
+          }
+        }
+      }
+    }
+
+    return null;
+  };
+
+  const mostrarMapa = async (pedido) => {
+    setCargandoMapa(true);
+    setPedidoParaMapa(pedido);
+    setMapaVisible(true);
+    
+    try {    
+      console.log('🗺️ Iniciando geocodificación para:', {
+        recogida: pedido.direccionRecogida,
+        entrega: pedido.direccionEntrega
+      });
+
+      const [coordRecogida, coordEntrega] = await Promise.all([
+        geocodificarDireccion(pedido.direccionRecogida),
+        geocodificarDireccion(pedido.direccionEntrega)
+      ]);
+      
+      if (!coordRecogida) {
+        console.warn('No se pudo geocodificar la dirección de recogida');
+      }
+      
+      if (!coordEntrega) {
+        console.warn('No se pudo geocodificar la dirección de entrega');
+      }
+
+      if (!coordRecogida && !coordEntrega) {
+        alert('No se pudieron encontrar las ubicaciones en el mapa. Verifique las direcciones.');
+        return;
+      }
+
+      if (!coordRecogida || !coordEntrega) {
+        alert('Solo se pudo encontrar una de las ubicaciones. El mapa puede no mostrar la ruta completa.');
+      }
+      
+      setCoordenadas({
+        recogida: coordRecogida,
+        entrega: coordEntrega
+      });
+      
+    } catch (error) {
+      console.error('Error durante la geocodificación:', error);
+      alert('Error al cargar las ubicaciones en el mapa. Intente nuevamente.');
+    } finally {
+      setCargandoMapa(false);
+    }
   };
 
   if (loading) {
@@ -790,20 +1023,27 @@ export default function OperadorPedidos() {
                     )}
                   </div>
                   
-                  <div className="card-footer d-flex justify-content-center gap-1 bg-light">
-                    <button
-                      className="btn btn-sm btn-outline-primary"
-                      onClick={() => handleEditar(pedido)}
-                    >
-                      <i className="bi bi-pencil-square me-1"></i>Editar
-                    </button>
-                    <button
-                      className="btn btn-sm btn-outline-danger"
-                      onClick={() => handleEliminar(pedido.id)}
-                    >
-                      <i className="bi bi-trash-fill me-1"></i>Eliminar
-                    </button>
-                  </div>
+                    <div className="card-footer d-flex justify-content-center gap-1 bg-light">
+                      <button
+                        className="btn btn-sm btn-outline-primary"
+                        onClick={() => handleEditar(pedido)}
+                      >
+                        <i className="bi bi-pencil-square me-1"></i>Editar
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-info"
+                        onClick={() => mostrarMapa(pedido)}
+                        title="Ver ruta en mapa"
+                      >
+                        <i className="bi bi-map me-1"></i>Ruta
+                      </button>
+                      <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleEliminar(pedido.id)}
+                      >
+                        <i className="bi bi-trash-fill me-1"></i>Eliminar
+                      </button>
+                    </div>
                 </div>
               </div>
             );
@@ -823,6 +1063,16 @@ export default function OperadorPedidos() {
                 </p>
               </div>
             )}
+          <ModalMapa 
+            mapaVisible={mapaVisible}
+            cargandoMapa={cargandoMapa}
+            pedidoParaMapa={pedidoParaMapa}
+            coordenadas={coordenadas}
+            setMapaVisible={setMapaVisible}
+            setPedidoParaMapa={setPedidoParaMapa}
+            setCoordenadas={setCoordenadas}
+            setCargandoMapa={setCargandoMapa}
+        />
       </div>
       <Footer />
     </>
